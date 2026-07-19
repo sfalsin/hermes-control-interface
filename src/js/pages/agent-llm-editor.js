@@ -3,37 +3,60 @@ import { showToast } from '../components/toast.js';
 import { api } from '../core/api.js';
 import { escapeHtml } from '../core/utils.js';
 
-// Available models from the LiteLLM proxy
-const AVAILABLE_MODELS = [
-  { value: 'fast', label: 'Fast (Kimi K2.5 → DeepSeek V4 Flash)' },
-  { value: 'think', label: 'Think (DeepSeek V4 Pro → GLM 5.2)' },
-  { value: 'code', label: 'Code (Qwen3-Coder → DeepSeek V4 Pro)' },
-  { value: 'compress', label: 'Compress (Gemini Flash → MiniMax M2.5)' },
-  { value: 'flash', label: 'Flash (Gemini Flash Lite → DeepSeek V4 Flash)' },
-  { value: 'heavy', label: 'Heavy (GLM 5.2)' },
-];
-
+// Auxiliary task types (enum - fixed list)
 const AUXILIARY_TASKS = [
-  { key: 'coding', label: 'Coding', desc: 'Code generation and review', recommended: 'code' },
-  { key: 'compression', label: 'Compression', desc: 'Context summarization', recommended: 'compress' },
-  { key: 'vision', label: 'Vision', desc: 'Image analysis', recommended: 'fast' },
-  { key: 'web_extract', label: 'Web Extract', desc: 'Web page summarization', recommended: 'compress' },
-  { key: 'skills_hub', label: 'Skills Hub', desc: 'Skill discovery', recommended: 'flash' },
-  { key: 'monitor', label: 'Monitor', desc: 'Urgency classification', recommended: 'flash' },
-  { key: 'background_review', label: 'Background Review', desc: 'Post-turn self-improvement', recommended: 'compress' },
-  { key: 'triage_specifier', label: 'Triage Specifier', desc: 'Kanban task specification', recommended: 'think' },
-  { key: 'kanban_decomposer', label: 'Kanban Decomposer', desc: 'Task decomposition', recommended: 'think' },
-  { key: 'curator', label: 'Curator', desc: 'Skills usage review', recommended: 'compress' },
-  { key: 'title_generation', label: 'Title Generation', desc: 'Session title generation', recommended: 'flash' },
+  { key: 'coding', label: 'Coding', desc: 'Code generation and review' },
+  { key: 'compression', label: 'Compression', desc: 'Context summarization' },
+  { key: 'vision', label: 'Vision', desc: 'Image analysis' },
+  { key: 'web_extract', label: 'Web Extract', desc: 'Web page summarization' },
+  { key: 'skills_hub', label: 'Skills Hub', desc: 'Skill discovery' },
+  { key: 'monitor', label: 'Monitor', desc: 'Urgency classification' },
+  { key: 'background_review', label: 'Background Review', desc: 'Post-turn self-improvement' },
+  { key: 'triage_specifier', label: 'Triage Specifier', desc: 'Kanban task specification' },
+  { key: 'kanban_decomposer', label: 'Kanban Decomposer', desc: 'Task decomposition' },
+  { key: 'curator', label: 'Curator', desc: 'Skills usage review' },
+  { key: 'title_generation', label: 'Title Generation', desc: 'Session title generation' },
 ];
 
-function renderModelSelect(id, currentValue, includeAuto = true) {
-  const options = includeAuto
-    ? [{ value: '', label: '— auto (use main model) —' }, ...AVAILABLE_MODELS]
-    : AVAILABLE_MODELS;
-  return `<select id="${id}" style="flex:1;background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;">
-    ${options.map(o => `<option value="${escapeHtml(o.value)}" ${o.value === (currentValue || '') ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
-  </select>`;
+function renderAuxRow(task, current) {
+  const baseUrl = current.base_url || '';
+  const model = current.model || '';
+  const apiKey = current.api_key || '';
+  const timeout = current.timeout || 120;
+  const enabled = !!model;
+
+  return `
+    <div class="aux-row" style="margin-bottom:12px;padding:10px;border-radius:8px;background:var(--bg-inset);border:1px solid var(--border);" data-task="${task.key}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div>
+          <span style="font-size:12px;font-weight:600;color:var(--fg);">${escapeHtml(task.label)}</span>
+          <span style="font-size:10px;color:var(--fg-muted);margin-left:8px;">${escapeHtml(task.desc)}</span>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" class="aux-enabled" data-task="${task.key}" ${enabled ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--gold);cursor:pointer;" />
+          <span style="font-size:11px;color:var(--fg-muted);">enabled</span>
+        </label>
+      </div>
+      <div class="aux-fields" style="${enabled ? '' : 'opacity:0.4;pointer-events:none;'}display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:10px;color:var(--fg-muted);">Base URL</label>
+          <input type="text" class="aux-base-url" data-task="${task.key}" value="${escapeHtml(baseUrl)}" placeholder="http://host:port/v1" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:10px;color:var(--fg-muted);">Model ID</label>
+          <input type="text" class="aux-model" data-task="${task.key}" value="${escapeHtml(model)}" placeholder="e.g. fast, think, code, gpt-4o" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:10px;color:var(--fg-muted);">API Key</label>
+          <input type="password" class="aux-api-key" data-task="${task.key}" value="${escapeHtml(apiKey)}" placeholder="(optional)" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="font-size:10px;color:var(--fg-muted);">Timeout (s)</label>
+          <input type="number" class="aux-timeout" data-task="${task.key}" value="${timeout}" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;" />
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 async function loadAgentLLMEditor(container, name) {
@@ -53,50 +76,61 @@ async function loadAgentLLMEditor(container, name) {
     container.innerHTML = `
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">⚡ Main Model</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <label style="min-width:120px;font-size:12px;color:var(--fg);">Default</label>
-          <input type="text" id="llm-main-model" value="${escapeHtml(model.default || '')}" style="flex:1;background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;" />
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-          <label style="min-width:120px;font-size:12px;color:var(--fg);">Provider</label>
-          <input type="text" id="llm-main-provider" value="${escapeHtml(model.provider || '')}" style="flex:1;background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;" />
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <label style="min-width:120px;font-size:12px;color:var(--fg);">Context Length</label>
-          <input type="number" id="llm-main-context" value="${model.context_length || 1000000}" style="flex:1;background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;" />
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:10px;color:var(--fg-muted);">Model</label>
+            <input type="text" id="llm-main-model" value="${escapeHtml(model.default || '')}" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--font-mono, monospace);" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:10px;color:var(--fg-muted);">Provider</label>
+            <input type="text" id="llm-main-provider" value="${escapeHtml(model.provider || '')}" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--font-mono, monospace);" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <label style="font-size:10px;color:var(--fg-muted);">Context Length</label>
+            <input type="number" id="llm-main-context" value="${model.context_length || 1000000}" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;" />
+          </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">🧠 Auxiliary Models</div>
-        <p style="font-size:11px;color:var(--fg-muted);margin-bottom:12px;">Select which model handles each auxiliary task. "auto" uses the main model.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="card-title" style="margin:0;">🧠 Auxiliary Models</div>
+          <button class="btn btn-ghost btn-sm" id="llm-fill-all-btn" title="Fill all with same base_url and api_key">📋 Fill All From First</button>
+        </div>
         <div id="aux-model-rows">
-          ${AUXILIARY_TASKS.map(task => {
-            const current = auxiliary[task.key] || {};
-            const currentModel = current.model || '';
-            return `
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:8px;border-radius:6px;background:var(--bg-inset);">
-                <div style="min-width:160px;">
-                  <div style="font-size:12px;font-weight:500;color:var(--fg);">${escapeHtml(task.label)}</div>
-                  <div style="font-size:10px;color:var(--fg-muted);">${escapeHtml(task.desc)}</div>
-                </div>
-                ${renderModelSelect(`aux-${task.key}`, currentModel)}
-                <span style="font-size:10px;color:var(--fg-muted);min-width:60px;" title="Recommended: ${task.recommended}">💡 ${task.recommended}</span>
-              </div>
-            `;
-          }).join('')}
+          ${AUXILIARY_TASKS.map(task => renderAuxRow(task, auxiliary[task.key] || {})).join('')}
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;">
           <button class="btn btn-primary" id="llm-save-btn">💾 Save LLM Config</button>
-          <button class="btn btn-ghost" id="llm-recommended-btn">🎯 Apply Recommended</button>
         </div>
       </div>
     `;
 
+    // Enable/disable toggle
+    container.addEventListener('change', (e) => {
+      if (e.target.classList.contains('aux-enabled')) {
+        const task = e.target.dataset.task;
+        const fields = container.querySelector(`.aux-row[data-task="${task}"] .aux-fields`);
+        if (fields) {
+          fields.style.opacity = e.target.checked ? '1' : '0.4';
+          fields.style.pointerEvents = e.target.checked ? '' : 'none';
+        }
+      }
+    });
+
+    // Fill all from first
+    document.getElementById('llm-fill-all-btn').addEventListener('click', () => {
+      const firstUrl = container.querySelector('.aux-base-url')?.value || '';
+      const firstKey = container.querySelector('.aux-api-key')?.value || '';
+      container.querySelectorAll('.aux-base-url').forEach(el => { if (!el.value) el.value = firstUrl; });
+      container.querySelectorAll('.aux-api-key').forEach(el => { if (!el.value) el.value = firstKey; });
+      showToast('Filled empty fields from first row', 'info');
+    });
+
     // Save handler
     document.getElementById('llm-save-btn').addEventListener('click', async () => {
       const newConfig = JSON.parse(JSON.stringify(config));
-      
+
       // Update main model
       newConfig.model = {
         default: document.getElementById('llm-main-model').value,
@@ -106,21 +140,22 @@ async function loadAgentLLMEditor(container, name) {
 
       // Update auxiliary
       if (!newConfig.auxiliary) newConfig.auxiliary = {};
-      const baseUrl = 'http://163.192.213.24:4001/v1';
-      const apiKey = 'sk-bloquo-litellm-master-2026';
 
       AUXILIARY_TASKS.forEach(task => {
-        const selected = document.getElementById(`aux-${task.key}`).value;
-        if (selected) {
-          newConfig.auxiliary[task.key] = {
-            base_url: baseUrl,
-            api_key: apiKey,
-            model: selected,
-            timeout: task.key === 'web_extract' ? 360 : (task.key === 'curator' || task.key === 'kanban_decomposer' ? 180 : 120),
-          };
-        } else {
+        const enabled = container.querySelector(`.aux-enabled[data-task="${task.key}"]`)?.checked;
+        if (!enabled) {
           delete newConfig.auxiliary[task.key];
+          return;
         }
+        const baseUrl = container.querySelector(`.aux-base-url[data-task="${task.key}"]`)?.value || '';
+        const modelId = container.querySelector(`.aux-model[data-task="${task.key}"]`)?.value || '';
+        const apiKey = container.querySelector(`.aux-api-key[data-task="${task.key}"]`)?.value || '';
+        const timeout = parseInt(container.querySelector(`.aux-timeout[data-task="${task.key}"]`)?.value) || 120;
+
+        const entry = { model: modelId, timeout };
+        if (baseUrl) entry.base_url = baseUrl;
+        if (apiKey) entry.api_key = apiKey;
+        newConfig.auxiliary[task.key] = entry;
       });
 
       try {
@@ -138,15 +173,6 @@ async function loadAgentLLMEditor(container, name) {
       } catch (e) {
         showToast('Save failed: ' + e.message, 'error');
       }
-    });
-
-    // Apply recommended
-    document.getElementById('llm-recommended-btn').addEventListener('click', () => {
-      AUXILIARY_TASKS.forEach(task => {
-        const sel = document.getElementById(`aux-${task.key}`);
-        if (sel) sel.value = task.recommended;
-      });
-      showToast('Recommended models applied — click Save to persist', 'info');
     });
 
   } catch (e) {
