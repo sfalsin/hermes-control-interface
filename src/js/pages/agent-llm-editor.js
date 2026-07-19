@@ -3,56 +3,42 @@ import { showToast } from '../components/toast.js';
 import { api } from '../core/api.js';
 import { escapeHtml } from '../core/utils.js';
 
-// Auxiliary task types (enum - fixed list)
-const AUXILIARY_TASKS = [
-  { key: 'coding', label: 'Coding', desc: 'Code generation and review' },
-  { key: 'compression', label: 'Compression', desc: 'Context summarization' },
-  { key: 'vision', label: 'Vision', desc: 'Image analysis' },
-  { key: 'web_extract', label: 'Web Extract', desc: 'Web page summarization' },
-  { key: 'skills_hub', label: 'Skills Hub', desc: 'Skill discovery' },
-  { key: 'monitor', label: 'Monitor', desc: 'Urgency classification' },
-  { key: 'background_review', label: 'Background Review', desc: 'Post-turn self-improvement' },
-  { key: 'triage_specifier', label: 'Triage Specifier', desc: 'Kanban task specification' },
-  { key: 'kanban_decomposer', label: 'Kanban Decomposer', desc: 'Task decomposition' },
-  { key: 'curator', label: 'Curator', desc: 'Skills usage review' },
-  { key: 'title_generation', label: 'Title Generation', desc: 'Session title generation' },
+// Known auxiliary task types (suggestions for the dropdown when adding)
+const KNOWN_TASKS = [
+  'coding', 'compression', 'vision', 'web_extract', 'skills_hub',
+  'monitor', 'background_review', 'triage_specifier', 'kanban_decomposer',
+  'curator', 'title_generation', 'mcp', 'approval', 'tts_audio_tags',
+  'profile_describer', 'moa_reference', 'moa_aggregator'
 ];
 
-function renderAuxRow(task, current) {
-  const baseUrl = current.base_url || '';
-  const model = current.model || '';
-  const apiKey = current.api_key || '';
-  const timeout = current.timeout || 120;
-  const enabled = !!model;
+function renderAuxRow(key, config) {
+  const baseUrl = config.base_url || '';
+  const model = config.model || '';
+  const apiKey = config.api_key || '';
+  const timeout = config.timeout || 120;
 
   return `
-    <div class="aux-row" style="margin-bottom:12px;padding:10px;border-radius:8px;background:var(--bg-inset);border:1px solid var(--border);" data-task="${task.key}">
+    <div class="aux-row" data-task="${escapeHtml(key)}" style="margin-bottom:10px;padding:10px;border-radius:8px;background:var(--bg-inset);border:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div>
-          <span style="font-size:12px;font-weight:600;color:var(--fg);">${escapeHtml(task.label)}</span>
-          <span style="font-size:10px;color:var(--fg-muted);margin-left:8px;">${escapeHtml(task.desc)}</span>
-        </div>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-          <input type="checkbox" class="aux-enabled" data-task="${task.key}" ${enabled ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--gold);cursor:pointer;" />
-          <span style="font-size:11px;color:var(--fg-muted);">enabled</span>
-        </label>
+        <span style="font-size:12px;font-weight:600;color:var(--gold);">${escapeHtml(key)}</span>
+        <button class="btn btn-ghost btn-sm aux-remove-btn" data-task="${escapeHtml(key)}" style="color:var(--red);font-size:11px;">✕ Remove</button>
       </div>
-      <div class="aux-fields" style="${enabled ? '' : 'opacity:0.4;pointer-events:none;'}display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <div style="display:flex;flex-direction:column;gap:2px;">
           <label style="font-size:10px;color:var(--fg-muted);">Base URL</label>
-          <input type="text" class="aux-base-url" data-task="${task.key}" value="${escapeHtml(baseUrl)}" placeholder="http://host:port/v1" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
+          <input type="text" class="aux-base-url" data-task="${escapeHtml(key)}" value="${escapeHtml(baseUrl)}" placeholder="http://host:port/v1" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
         </div>
         <div style="display:flex;flex-direction:column;gap:2px;">
           <label style="font-size:10px;color:var(--fg-muted);">Model</label>
-          <input type="text" class="aux-model" data-task="${task.key}" value="${escapeHtml(model)}" placeholder="model id (e.g. code, gpt-4o, claude-sonnet-4)" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
+          <input type="text" class="aux-model" data-task="${escapeHtml(key)}" value="${escapeHtml(model)}" placeholder="model id" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
         </div>
         <div style="display:flex;flex-direction:column;gap:2px;">
           <label style="font-size:10px;color:var(--fg-muted);">API Key</label>
-          <input type="password" class="aux-api-key" data-task="${task.key}" value="${escapeHtml(apiKey)}" placeholder="(optional)" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
+          <input type="password" class="aux-api-key" data-task="${escapeHtml(key)}" value="${escapeHtml(apiKey)}" placeholder="(optional)" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
         </div>
         <div style="display:flex;flex-direction:column;gap:2px;">
           <label style="font-size:10px;color:var(--fg-muted);">Timeout (s)</label>
-          <input type="number" class="aux-timeout" data-task="${task.key}" value="${timeout}" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;" />
+          <input type="number" class="aux-timeout" data-task="${escapeHtml(key)}" value="${timeout}" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;" />
         </div>
       </div>
     </div>
@@ -72,6 +58,13 @@ async function loadAgentLLMEditor(container, name) {
     const config = res.config || {};
     const model = config.model || {};
     const auxiliary = config.auxiliary || {};
+
+    // Build existing auxiliary rows
+    const auxKeys = Object.keys(auxiliary);
+    const auxRows = auxKeys.map(key => renderAuxRow(key, auxiliary[key])).join('');
+
+    // Build "add" dropdown options (exclude already configured)
+    const availableToAdd = KNOWN_TASKS.filter(t => !auxKeys.includes(t));
 
     container.innerHTML = `
       <div class="card" style="margin-bottom:16px;">
@@ -95,10 +88,18 @@ async function loadAgentLLMEditor(container, name) {
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div class="card-title" style="margin:0;">🧠 Auxiliary Models</div>
-          <button class="btn btn-ghost btn-sm" id="llm-fill-all-btn" title="Fill all with same base_url and api_key">📋 Fill All From First</button>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select id="aux-add-select" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;">
+              <option value="">+ Add auxiliary...</option>
+              ${availableToAdd.map(t => `<option value="${t}">${t}</option>`).join('')}
+              <option value="__custom__">— custom name —</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" id="llm-fill-all-btn" title="Fill all with same base_url and api_key">📋 Fill All</button>
+          </div>
         </div>
+        ${auxKeys.length === 0 ? '<p style="font-size:12px;color:var(--fg-muted);text-align:center;padding:20px;">No auxiliary models configured. Add one above.</p>' : ''}
         <div id="aux-model-rows">
-          ${AUXILIARY_TASKS.map(task => renderAuxRow(task, auxiliary[task.key] || {})).join('')}
+          ${auxRows}
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;">
           <button class="btn btn-primary" id="llm-save-btn">💾 Save LLM Config</button>
@@ -106,14 +107,40 @@ async function loadAgentLLMEditor(container, name) {
       </div>
     `;
 
-    // Enable/disable toggle
-    container.addEventListener('change', (e) => {
-      if (e.target.classList.contains('aux-enabled')) {
+    // Add auxiliary handler
+    document.getElementById('aux-add-select').addEventListener('change', (e) => {
+      let taskName = e.target.value;
+      if (!taskName) return;
+      if (taskName === '__custom__') {
+        taskName = prompt('Enter custom auxiliary task name:');
+        if (!taskName || !taskName.trim()) { e.target.value = ''; return; }
+        taskName = taskName.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      }
+      e.target.value = '';
+      // Remove from dropdown
+      const opt = e.target.querySelector(`option[value="${taskName}"]`);
+      if (opt && taskName !== '__custom__') opt.remove();
+      // Add row
+      const rowsEl = document.getElementById('aux-model-rows');
+      const placeholder = rowsEl.querySelector('p');
+      if (placeholder) placeholder.remove();
+      rowsEl.insertAdjacentHTML('beforeend', renderAuxRow(taskName, {}));
+    });
+
+    // Remove handler (delegated)
+    container.addEventListener('click', (e) => {
+      if (e.target.classList.contains('aux-remove-btn')) {
         const task = e.target.dataset.task;
-        const fields = container.querySelector(`.aux-row[data-task="${task}"] .aux-fields`);
-        if (fields) {
-          fields.style.opacity = e.target.checked ? '1' : '0.4';
-          fields.style.pointerEvents = e.target.checked ? '' : 'none';
+        const row = container.querySelector(`.aux-row[data-task="${task}"]`);
+        if (row) row.remove();
+        // Re-add to dropdown
+        const sel = document.getElementById('aux-add-select');
+        if (sel && KNOWN_TASKS.includes(task)) {
+          const customOpt = sel.querySelector('option[value="__custom__"]');
+          const newOpt = document.createElement('option');
+          newOpt.value = task;
+          newOpt.textContent = task;
+          sel.insertBefore(newOpt, customOpt);
         }
       }
     });
@@ -122,6 +149,7 @@ async function loadAgentLLMEditor(container, name) {
     document.getElementById('llm-fill-all-btn').addEventListener('click', () => {
       const firstUrl = container.querySelector('.aux-base-url')?.value || '';
       const firstKey = container.querySelector('.aux-api-key')?.value || '';
+      if (!firstUrl && !firstKey) { showToast('First row has no values to copy', 'warning'); return; }
       container.querySelectorAll('.aux-base-url').forEach(el => { if (!el.value) el.value = firstUrl; });
       container.querySelectorAll('.aux-api-key').forEach(el => { if (!el.value) el.value = firstKey; });
       showToast('Filled empty fields from first row', 'info');
@@ -138,24 +166,20 @@ async function loadAgentLLMEditor(container, name) {
         context_length: parseInt(document.getElementById('llm-main-context').value) || 1000000,
       };
 
-      // Update auxiliary
-      if (!newConfig.auxiliary) newConfig.auxiliary = {};
+      // Rebuild auxiliary from current rows
+      newConfig.auxiliary = {};
+      container.querySelectorAll('.aux-row').forEach(row => {
+        const task = row.dataset.task;
+        const baseUrl = row.querySelector('.aux-base-url')?.value || '';
+        const modelId = row.querySelector('.aux-model')?.value || '';
+        const apiKey = row.querySelector('.aux-api-key')?.value || '';
+        const timeout = parseInt(row.querySelector('.aux-timeout')?.value) || 120;
 
-      AUXILIARY_TASKS.forEach(task => {
-        const enabled = container.querySelector(`.aux-enabled[data-task="${task.key}"]`)?.checked;
-        if (!enabled) {
-          delete newConfig.auxiliary[task.key];
-          return;
-        }
-        const baseUrl = container.querySelector(`.aux-base-url[data-task="${task.key}"]`)?.value || '';
-        const modelId = container.querySelector(`.aux-model[data-task="${task.key}"]`)?.value || '';
-        const apiKey = container.querySelector(`.aux-api-key[data-task="${task.key}"]`)?.value || '';
-        const timeout = parseInt(container.querySelector(`.aux-timeout[data-task="${task.key}"]`)?.value) || 120;
-
+        if (!modelId) return; // skip empty model
         const entry = { model: modelId, timeout };
         if (baseUrl) entry.base_url = baseUrl;
         if (apiKey) entry.api_key = apiKey;
-        newConfig.auxiliary[task.key] = entry;
+        newConfig.auxiliary[task] = entry;
       });
 
       try {
