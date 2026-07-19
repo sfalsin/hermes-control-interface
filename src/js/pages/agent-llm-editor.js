@@ -43,8 +43,16 @@ function renderAuxRow(task, current) {
           <input type="text" class="aux-base-url" data-task="${task.key}" value="${escapeHtml(baseUrl)}" placeholder="http://host:port/v1" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
         </div>
         <div style="display:flex;flex-direction:column;gap:2px;">
-          <label style="font-size:10px;color:var(--fg-muted);">Model ID</label>
-          <input type="text" class="aux-model" data-task="${task.key}" value="${escapeHtml(model)}" placeholder="e.g. fast, think, code, gpt-4o" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:var(--font-mono, monospace);" />
+          <label style="font-size:10px;color:var(--fg-muted);">Model Function</label>
+          <select class="aux-model" data-task="${task.key}" style="background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;">
+            <option value="" ${!model ? 'selected' : ''}>— select —</option>
+            <option value="fast" ${model === 'fast' ? 'selected' : ''}>fast (chat, quick responses)</option>
+            <option value="think" ${model === 'think' ? 'selected' : ''}>think (reasoning, analysis)</option>
+            <option value="code" ${model === 'code' ? 'selected' : ''}>code (code gen/review)</option>
+            <option value="compress" ${model === 'compress' ? 'selected' : ''}>compress (summarization)</option>
+            <option value="flash" ${model === 'flash' ? 'selected' : ''}>flash (ultra fast, cheap)</option>
+            <option value="heavy" ${model === 'heavy' ? 'selected' : ''}>heavy (complex tasks)</option>
+          </select>
         </div>
         <div style="display:flex;flex-direction:column;gap:2px;">
           <label style="font-size:10px;color:var(--fg-muted);">API Key</label>
