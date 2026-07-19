@@ -16,6 +16,7 @@ import { loadHome, hcirestart, hciupdate, runHCIUpdate, updateHCIInfo, checkHCIU
 import { loadAgents, deleteAgent, setAgentDefault, loadAgentDetail, loadAgentTab, loadAgentDashboard, loadAgentSessions, toggleSessionDetail, loadSessionStats, resumeSession, openTerminalPanel, loadXtermAndConnect, renameSession, exportSession, deleteSession, loadAgentGateway, renderGatewayHealth, fixGateway, loadGatewayConnections, loadGatewayLogs, gatewayAction, sseProgressModal } from './pages/agents.js';
 import { loadAgentConfig, loadAgentMemory, loadAgentCron, loadCronJobs, cronAction, cronRemove, showCreateCronModal } from './pages/agent-config.js';
 import { loadAgentIdentity, loadAgentUserProfile, loadAgentMemoryFiles } from './pages/agent-editors.js';
+import { loadAgentLLMEditor } from './pages/agent-llm-editor.js';
 import { loadUsage, fetchUsageData, renderUsageCharts } from './pages/usage.js';
 import { loadSkills } from './pages/skills.js';
 import { loadUsersPage, loadAuditLogPage, loadUsers, refreshUsersEverywhere, deleteUser, showCreateUser, createUser, showEditUser, showResetPassword } from './pages/users.js';
@@ -83,7 +84,7 @@ Object.assign(window, {
   cronAction, cronRemove, showCreateCronModal,
 
   // Agent Editors (Identity, User, Memory Files)
-  loadAgentIdentity, loadAgentUserProfile, loadAgentMemoryFiles,
+  loadAgentIdentity, loadAgentUserProfile, loadAgentMemoryFiles, loadAgentLLMEditor,
 
   // Usage
   fetchUsageData, renderUsageCharts, loadUsage,

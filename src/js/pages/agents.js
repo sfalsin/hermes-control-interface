@@ -6,6 +6,7 @@ import { navigate } from '../core/navigation.js';
 import { escapeHtml } from '../core/utils.js';
 import { loadAgentConfig, loadAgentCron, loadAgentMemory } from './agent-config.js';
 import { loadAgentIdentity, loadAgentUserProfile, loadAgentMemoryFiles } from './agent-editors.js';
+import { loadAgentLLMEditor } from './agent-llm-editor.js';
 import { loadTokenUsage } from './home.js';
 import { showCreateAgent } from './maintenance.js';
 import { terminalKey, toggleTerminalFullscreen } from './terminal.js';
@@ -112,6 +113,7 @@ async function loadAgentDetail(container, params) {
       <button class="tab" data-tab="sessions" data-i18n="home.sessions">Sessions</button>
       <button class="tab" data-tab="gateway" data-i18n="home.gateway">Gateway</button>
       <button class="tab" data-tab="config" data-i18n="auto.config">Config</button>
+      <button class="tab" data-tab="llm">LLM Models</button>
       <button class="tab" data-tab="identity" data-i18n="auto.identity">Identity</button>
       <button class="tab" data-tab="user-profile" data-i18n="auto.userProfile">User</button>
       <button class="tab" data-tab="memory-files" data-i18n="auto.memoryFiles">Memory Files</button>
@@ -146,6 +148,7 @@ async function loadAgentTab(tabName, profileName) {
     case 'sessions': await loadAgentSessions(content, profileName); break;
     case 'gateway': await loadAgentGateway(content, profileName); break;
     case 'config': await loadAgentConfig(content, profileName); break;
+    case 'llm': await loadAgentLLMEditor(content, profileName); break;
     case 'identity': await loadAgentIdentity(content, profileName); break;
     case 'user-profile': await loadAgentUserProfile(content, profileName); break;
     case 'memory-files': await loadAgentMemoryFiles(content, profileName); break;
