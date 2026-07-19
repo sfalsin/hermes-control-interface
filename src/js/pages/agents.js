@@ -5,6 +5,7 @@ import { api } from '../core/api.js';
 import { navigate } from '../core/navigation.js';
 import { escapeHtml } from '../core/utils.js';
 import { loadAgentConfig, loadAgentCron, loadAgentMemory } from './agent-config.js';
+import { loadAgentIdentity, loadAgentUserProfile, loadAgentMemoryFiles } from './agent-editors.js';
 import { loadTokenUsage } from './home.js';
 import { showCreateAgent } from './maintenance.js';
 import { terminalKey, toggleTerminalFullscreen } from './terminal.js';
@@ -111,6 +112,9 @@ async function loadAgentDetail(container, params) {
       <button class="tab" data-tab="sessions" data-i18n="home.sessions">Sessions</button>
       <button class="tab" data-tab="gateway" data-i18n="home.gateway">Gateway</button>
       <button class="tab" data-tab="config" data-i18n="auto.config">Config</button>
+      <button class="tab" data-tab="identity" data-i18n="auto.identity">Identity</button>
+      <button class="tab" data-tab="user-profile" data-i18n="auto.userProfile">User</button>
+      <button class="tab" data-tab="memory-files" data-i18n="auto.memoryFiles">Memory Files</button>
       <button class="tab" data-tab="memory" data-i18n="auto.memory">Memory</button>
       <button class="tab" data-tab="skills" data-i18n="auto.skills">Skills</button>
       <button class="tab" data-tab="cron" data-i18n="home.cron">Cron</button>
@@ -142,6 +146,9 @@ async function loadAgentTab(tabName, profileName) {
     case 'sessions': await loadAgentSessions(content, profileName); break;
     case 'gateway': await loadAgentGateway(content, profileName); break;
     case 'config': await loadAgentConfig(content, profileName); break;
+    case 'identity': await loadAgentIdentity(content, profileName); break;
+    case 'user-profile': await loadAgentUserProfile(content, profileName); break;
+    case 'memory-files': await loadAgentMemoryFiles(content, profileName); break;
     case 'memory': await loadAgentMemory(content, profileName); break;
     case 'skills': await loadAgentSkills(content, profileName); break;
     case 'cron': await loadAgentCron(content, profileName); break;

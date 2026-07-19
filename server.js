@@ -4535,6 +4535,159 @@ app.get('/api/memory/:profile', requireAuth, async (req, res) => {
   }
 });
 
+// ==========================================
+// Identity, User Profile & Memory Editor API
+// ==========================================
+
+// GET /api/agent-file/:profile/:fileType - Read SOUL.md or USER.md
+app.get('/api/agent-file/:profile/:fileType', requireAuth, requireProfileAccess, async (req, res) => {
+  try {
+    const profile = sanitizeProfileName(req.params.profile);
+    if (!profile) return res.status(400).json({ ok: false, error: 'invalid profile name' });
+    const fileType = req.params.fileType;
+    if (!['SOUL.md', 'USER.md'].includes(fileType)) {
+      return res.status(400).json({ ok: false, error: 'invalid file type' });
+    }
+    const home = profile === 'default' ? `${process.env.HOME}/.hermes` : `${process.env.HOME}/.hermes/profiles/${profile}`;
+    const filePath = path.join(home, fileType);
+    let content = '';
+    try {
+      content = fs.readFileSync(filePath, 'utf8');
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        return res.json({ ok: true, content: '', exists: false });
+      }
+      throw e;
+    }
+    res.json({ ok: true, content, exists: true });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// PUT /api/agent-file/:profile/:fileType - Write SOUL.md or USER.md
+app.put('/api/agent-file/:profile/:fileType', requireAuth, requireCsrf, requireProfileAccess, async (req, res) => {
+  try {
+    const profile = sanitizeProfileName(req.params.profile);
+    if (!profile) return res.status(400).json({ ok: false, error: 'invalid profile name' });
+    const fileType = req.params.fileType;
+    if (!['SOUL.md', 'USER.md'].includes(fileType)) {
+      return res.status(400).json({ ok: false, error: 'invalid file type' });
+    }
+    const content = req.body?.content;
+    if (typeof content !== 'string') {
+      return res.status(400).json({ ok: false, error: 'content must be a string' });
+    }
+    const home = profile === 'default' ? `${process.env.HOME}/.hermes` : `${process.env.HOME}/.hermes/profiles/${profile}`;
+    const filePath = path.join(home, fileType);
+    fs.writeFileSync(filePath, content, 'utf8');
+    res.json({ ok: true, bytes: Buffer.byteLength(content, 'utf8') });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/agent-memory-files/:profile - List all memory/*.md files
+app.get('/api/agent-memory-files/:profile', requireAuth, requireProfileAccess, async (req, res) => {
+  try {
+    const profile = sanitizeProfileName(req.params.profile);
+    if (!profile) return res.status(400).json({ ok: false, error: 'invalid profile name' });
+    const home = profile === 'default' ? `${process.env.HOME}/.hermes` : `${process.env.HOME}/.hermes/profiles/${profile}`;
+    const memDir = path.join(home, 'memory');
+    let files = [];
+    try {
+      const entries = fs.readdirSync(memDir, { withFileTypes: true });
+      files = entries
+        .filter(e => e.isFile() && e.name.endsWith('.md'))
+        .map(e => {
+          const stat = fs.statSync(path.join(memDir, e.name));
+          return { name: e.name, size: stat.size, mtime: stat.mtime.toISOString() };
+        })
+        .sort((a, b) => b.name.localeCompare(a.name)); // reverse chronological (newest first by filename)
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e;
+      // memory dir doesn't exist yet — return empty
+    }
+    res.json({ ok: true, files });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/agent-memory-files/:profile/:filename - Read a specific memory file
+app.get('/api/agent-memory-files/:profile/:filename', requireAuth, requireProfileAccess, async (req, res) => {
+  try {
+    const profile = sanitizeProfileName(req.params.profile);
+    if (!profile) return res.status(400).json({ ok: false, error: 'invalid profile name' });
+    const filename = req.params.filename;
+    if (!filename || !filename.endsWith('.md') || filename.includes('/') || filename.includes('..')) {
+      return res.status(400).json({ ok: false, error: 'invalid filename' });
+    }
+    const home = profile === 'default' ? `${process.env.HOME}/.hermes` : `${process.env.HOME}/.hermes/profiles/${profile}`;
+    const filePath = path.join(home, 'memory', filename);
+    let content = '';
+    try {
+      content = fs.readFileSync(filePath, 'utf8');
+    } catch (e) {
+      if (e.code === 'ENOENT') return res.status(404).json({ ok: false, error: 'file not found' });
+      throw e;
+    }
+    res.json({ ok: true, content, filename });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// PUT /api/agent-memory-files/:profile/:filename - Create/update a memory file
+app.put('/api/agent-memory-files/:profile/:filename', requireAuth, requireCsrf, requireProfileAccess, async (req, res) => {
+  try {
+    const profile = sanitizeProfileName(req.params.profile);
+    if (!profile) return res.status(400).json({ ok: false, error: 'invalid profile name' });
+    const filename = req.params.filename;
+    if (!filename || !filename.endsWith('.md') || filename.includes('/') || filename.includes('..')) {
+      return res.status(400).json({ ok: false, error: 'invalid filename' });
+    }
+    const content = req.body?.content;
+    if (typeof content !== 'string') {
+      return res.status(400).json({ ok: false, error: 'content must be a string' });
+    }
+    const home = profile === 'default' ? `${process.env.HOME}/.hermes` : `${process.env.HOME}/.hermes/profiles/${profile}`;
+    const memDir = path.join(home, 'memory');
+    // Ensure memory directory exists
+    if (!fs.existsSync(memDir)) {
+      fs.mkdirSync(memDir, { recursive: true });
+    }
+    const filePath = path.join(memDir, filename);
+    fs.writeFileSync(filePath, content, 'utf8');
+    res.json({ ok: true, bytes: Buffer.byteLength(content, 'utf8') });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE /api/agent-memory-files/:profile/:filename - Delete a memory file
+app.delete('/api/agent-memory-files/:profile/:filename', requireAuth, requireCsrf, requireProfileAccess, async (req, res) => {
+  try {
+    const profile = sanitizeProfileName(req.params.profile);
+    if (!profile) return res.status(400).json({ ok: false, error: 'invalid profile name' });
+    const filename = req.params.filename;
+    if (!filename || !filename.endsWith('.md') || filename.includes('/') || filename.includes('..')) {
+      return res.status(400).json({ ok: false, error: 'invalid filename' });
+    }
+    const home = profile === 'default' ? `${process.env.HOME}/.hermes` : `${process.env.HOME}/.hermes/profiles/${profile}`;
+    const filePath = path.join(home, 'memory', filename);
+    try {
+      fs.unlinkSync(filePath);
+    } catch (e) {
+      if (e.code === 'ENOENT') return res.status(404).json({ ok: false, error: 'file not found' });
+      throw e;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // Profiles list (for skill install picker)
 // Skills browse (paginated)
 app.get('/api/skills/browse/:page', requireAuth, async (req, res) => {
